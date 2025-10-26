@@ -1,0 +1,48 @@
+services:
+  # Backend Django API
+  - type: web
+    name: interviewer-ai-backend
+    runtime: python
+    buildCommand: "cd backend && pip install -r requirements.txt && python manage.py migrate"
+    startCommand: "cd backend && daphne -b 0.0.0.0 -p $PORT config.asgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.5
+      - key: DEBUG
+        value: False
+      - key: MONGODB_URI
+        fromDatabase:
+          name: interviewer-ai-mongodb
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: interviewer-ai-redis
+          type: redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+    healthCheckPath: /api/
+
+  # Frontend Next.js
+  - type: web
+    name: interviewer-ai-frontend
+    runtime: node
+    buildCommand: "cd frontend && npm install && npm run build"
+    startCommand: "cd frontend && npm start"
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: NEXT_PUBLIC_API_URL
+        value: https://interviewer-ai-backend.onrender.com/api
+      - key: NEXT_PUBLIC_WS_URL
+        value: wss://interviewer-ai-backend.onrender.com/ws
+
+databases:
+  - name: interviewer-ai-mongodb
+    databaseName: interviewer_ai_db
+    user: admin
+
+  - name: interviewer-ai-redis
+    type: redis
